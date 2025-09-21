@@ -1,0 +1,91 @@
+// Déclaration du client Prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // ta variable d'environnement
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+//
+// 📂 Modèles
+//
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password_hash String
+  role          Role      @default(PATIENT)
+  created_at    DateTime  @default(now())
+
+  profile       Profile?
+  patientAppointments Appointment[] @relation("PatientAppointments")
+  medecinAppointments Appointment[] @relation("MedecinAppointments")
+  messages      Message[]
+  medicalRecordsPatient MedicalRecord[] @relation("PatientRecords")
+  medicalRecordsMedecin MedicalRecord[] @relation("MedecinRecords")
+}
+
+model Profile {
+  id         String   @id
+  user       User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  full_name  String?
+  phone      String?
+  avatar_url String?
+  speciality String?   // si médecin
+  birth_date DateTime? // si patient
+  updated_at DateTime  @default(now())
+}
+
+model Appointment {
+  id          String    @id @default(uuid())
+  patient_id  String
+  medecin_id  String
+  scheduled_at DateTime
+  status      AppointmentStatus @default(PENDING)
+  created_at  DateTime @default(now())
+
+  patient User   @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
+  medecin User   @relation("MedecinAppointments", fields: [medecin_id], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  appointment_id String
+  sender_id      String
+  content        String
+  created_at     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  sender      User        @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+}
+
+model MedicalRecord {
+  id          String   @id @default(uuid())
+  patient_id  String
+  medecin_id  String
+  notes       String?
+  created_at  DateTime @default(now())
+
+  patient User @relation("PatientRecords", fields: [patient_id], references: [id], onDelete: Cascade)
+  medecin User @relation("MedecinRecords", fields: [medecin_id], references: [id], onDelete: Cascade)
+}
+
+//
+// 📌 Enums
+//
+
+enum Role {
+  PATIENT
+  MEDECIN
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  DONE
+}
